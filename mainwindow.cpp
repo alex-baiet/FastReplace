@@ -102,12 +102,12 @@ void MainWindow::addMissingFiles(const QDir& srcDir, const QDir& destDir) {
 void MainWindow::on_btnStart_clicked() {
     qInfo() << "Started copy";
     if (!checkDirExists()) {
-        ui->labelProcess->setText("Le chemin des dossiers est incorrect ou incomplet.");
+        ui->labelProcess->setText("A directory path is incorrect or empty.");
         qWarning() << "Wrong path : copy aborted";
         return;
     }
 
-    ui->labelProcess->setText("Copie en cours...");
+    ui->labelProcess->setText("Replacing in progress...");
 
     // Init variables
     const QDir srcDir(ui->editSrc->text());
@@ -122,7 +122,7 @@ void MainWindow::on_btnStart_clicked() {
 
     // End
     qInfo() << "Copy finished successfully";
-    ui->labelProcess->setText("Copie terminé.");
+    ui->labelProcess->setText("Replacing finished.");
 }
 
 void MainWindow::on_btnSrc_clicked() {

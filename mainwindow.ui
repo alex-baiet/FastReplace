@@ -43,7 +43,7 @@
         <item row="2" column="0">
          <widget class="QLabel" name="labelDest">
           <property name="text">
-           <string>Dossier destination</string>
+           <string>Destination folder</string>
           </property>
          </widget>
         </item>
@@ -136,7 +136,7 @@
         <item row="1" column="0">
          <widget class="QLabel" name="labelSrc">
           <property name="text">
-           <string>Dossier source</string>
+           <string>Source folder</string>
           </property>
          </widget>
         </item>
@@ -213,7 +213,7 @@
         <item>
          <widget class="QPushButton" name="btnStart">
           <property name="text">
-           <string>Commencer</string>
+           <string>Start</string>
           </property>
          </widget>
         </item>
