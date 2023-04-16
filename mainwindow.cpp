@@ -4,7 +4,6 @@
 #include <iostream>
 #include <QFileDialog>
 #include <QLineEdit>
-#include <filesystem>
 #include <QDir>
 #include <QDebug>
 
@@ -36,6 +35,70 @@ bool MainWindow::checkDirExists() {
     return true;
 }
 
+int MainWindow::countFiles(const QDir& dir) const {
+    int count = 0;
+    foreach (QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
+        if (info.isFile()) count++;
+        if (info.isDir()) count += countFiles(QDir(info.absoluteFilePath()));
+    }
+    return count;
+}
+
+void MainWindow::removeExcessFiles(const QDir& srcDir, const QDir& destDir) {
+    foreach (QFileInfo info, destDir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
+        if (info.isFile()) {
+            // File case
+            if (!srcDir.exists(info.fileName())) {
+                // Remove file
+                QFile::remove(info.absoluteFilePath());
+                qInfo() << "Removed" << info.absoluteFilePath();
+            }
+            ui->progressBar->setValue(ui->progressBar->value() + 1);
+
+        } else {
+            // Directory case
+            if (!srcDir.exists(info.fileName())) {
+                // Remove directory
+                QDir dir(info.absoluteFilePath());
+                int count = countFiles(dir);
+                dir.removeRecursively();
+                qInfo() << "Removed recursively" << info.absoluteFilePath();
+                ui->progressBar->setValue(ui->progressBar->value() + count);
+            } else {
+                // Recursively remove in sub-directory
+                QDir srcChild(srcDir.absoluteFilePath(info.fileName()));
+                QDir destChild(info.absoluteFilePath());
+                removeExcessFiles(srcChild, destChild);
+            }
+        }
+    }
+}
+
+void MainWindow::addMissingFiles(const QDir& srcDir, const QDir& destDir) {
+    foreach (QFileInfo info, srcDir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
+        if (info.isFile()) {
+            // File case
+            if (!destDir.exists(info.fileName())) {
+                // copy file
+                QFile::copy(info.absoluteFilePath(), destDir.absoluteFilePath(info.fileName()));
+                qInfo() << "Copied" << info.absoluteFilePath();
+            }
+            ui->progressBar->setValue(ui->progressBar->value() + 1);
+
+        } else {
+            // Directory case
+            if (!destDir.exists(info.fileName())) {
+                // Create empty directory
+                destDir.mkdir(info.fileName());
+            }
+            // Recursively copy in sub-directory
+            QDir srcChild(info.absoluteFilePath());
+            QDir destChild(destDir.absoluteFilePath(info.fileName()));
+            addMissingFiles(srcChild, destChild);
+        }
+    }}
+
+
 void MainWindow::on_btnStart_clicked() {
     qInfo() << "Started copy";
     if (!checkDirExists()) {
@@ -50,28 +113,14 @@ void MainWindow::on_btnStart_clicked() {
     const QDir srcDir(ui->editSrc->text());
     const QDir destDir(ui->editDest->text());
     QString fileName;
-    const int stepCount = srcDir.entryList(QDir::Files).count() + destDir.entryList(QDir::Files).count();
-    int currentStep = 0;
+    const int stepCount = countFiles(srcDir) + countFiles(destDir);
     ui->progressBar->setMaximum(stepCount);
 
-    // Remove excess files
-    foreach (fileName, destDir.entryList(QDir::Files)) {
-        if (!srcDir.exists(fileName)) {
-            qInfo() << "Removed" << fileName;
-            QFile::remove(destDir.absoluteFilePath(fileName));
-        }
-        ui->progressBar->setValue(++currentStep);
-    }
+    // Remove and add files
+    removeExcessFiles(srcDir, destDir);
+    addMissingFiles(srcDir, destDir);
 
-    // Add missing files
-    foreach (fileName, srcDir.entryList(QDir::Files)) {
-        if (!destDir.exists(fileName)) {
-            qInfo() << "Copied" << fileName;
-            QFile::copy(srcDir.absoluteFilePath(fileName), destDir.absoluteFilePath(fileName));
-        }
-        ui->progressBar->setValue(++currentStep);
-    }
-
+    // End
     qInfo() << "Copy finished successfully";
     ui->labelProcess->setText("Copie terminé.");
 }
